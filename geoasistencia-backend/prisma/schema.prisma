@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolUsuario {
+  admin
+  empleado
+}
+
+enum EstadoUsuario {
+  activo
+  inactivo
+}
+
+enum TipoRegistro {
+  ENTRADA
+  SALIDA
+}
+
+enum FuenteRegistro {
+  ONLINE
+  OFFLINE_SYNC
+}
+
+enum TipoConsent {
+  LOCATION
+}
+
+model sede {
+  id_sede      String   @id @default(uuid())
+  nombre       String   @db.VarChar(120)
+  latitud      Decimal  @db.Decimal(10, 7)
+  longitud     Decimal  @db.Decimal(10, 7)
+  radio_metros Int
+  direccion    String?  @db.VarChar(200)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  usuarios     usuario[]
+  registros    registro_asistencia[]
+
+  @@index([nombre])
+}
+
+model usuario {
+  id_usuario       String       @id @default(uuid())
+  public_id        String       @unique @db.VarChar(30)
+  email            String       @unique @db.VarChar(160)
+  password_hash    String       @db.VarChar(255)
+  rol              RolUsuario   @default(empleado)
+  estado           EstadoUsuario @default(activo)
+  id_sede_asignada String?
+
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+
+  sede             sede?        @relation(fields: [id_sede_asignada], references: [id_sede], onDelete: SetNull, onUpdate: Cascade)
+  identidad        usuario_identidad?
+  registros        registro_asistencia[]
+  auditorias       audit_log[]
+  consentimientos  consentimiento[]
+
+  @@index([id_sede_asignada])
+}
+
+model usuario_identidad {
+  id_usuario       String   @id
+  nombres          String?  @db.VarChar(120)
+  apellidos        String?  @db.VarChar(120)
+  cedula           String?  @unique @db.VarChar(30)
+  telefono         String?  @db.VarChar(30)
+  fecha_nacimiento DateTime?
+  updated_at       DateTime @updatedAt
+
+  usuario          usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model registro_asistencia {
+  id_registro     String        @id @default(uuid())
+  id_usuario      String
+  id_sede         String
+  tipo            TipoRegistro
+  ts_servidor     DateTime
+  latitud      Decimal  @db.Decimal(10, 7)
+  longitud     Decimal  @db.Decimal(10, 7)
+  dentro_geocerca Boolean
+  fuente          FuenteRegistro @default(ONLINE)
+  device_id       String?       @db.VarChar(120)
+  created_at      DateTime      @default(now())
+
+  usuario         usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Restrict, onUpdate: Cascade)
+  sede            sede    @relation(fields: [id_sede], references: [id_sede], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([id_usuario, ts_servidor])
+  @@index([id_sede, ts_servidor])
+}
+
+model audit_log {
+  id_audit         String   @id @default(uuid())
+  actor_id_usuario String
+  accion           String   @db.VarChar(60)
+  target_tipo      String   @db.VarChar(30)
+  target_id        String   @db.VarChar(60)
+  motivo           String?  @db.VarChar(255)
+  ip               String?  @db.VarChar(45)
+  user_agent       String?  @db.VarChar(255)
+  created_at       DateTime @default(now())
+
+  actor            usuario  @relation(fields: [actor_id_usuario], references: [id_usuario], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([actor_id_usuario, created_at])
+  @@index([accion, created_at])
+}
+
+model consentimiento {
+  id_consent  String      @id @default(uuid())
+  id_usuario  String
+  tipo        TipoConsent @default(LOCATION)
+  otorgado    Boolean     @default(false)
+  otorgado_en DateTime?
+  revocado_en DateTime?
+
+  usuario     usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([id_usuario])
+}
