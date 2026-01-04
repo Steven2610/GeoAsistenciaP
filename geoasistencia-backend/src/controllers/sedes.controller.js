@@ -2,10 +2,42 @@ import { prisma } from "../prisma/client.js";
 
 export async function listSedes(req, res, next) {
   try {
+    // 1) Traer sedes (como ya lo haces)
     const sedes = await prisma.sede.findMany({
       orderBy: { created_at: "desc" },
     });
-    res.json(sedes);
+
+    // 2) Conteo "presentes hoy" por sede:
+    //    - Tomamos el ÚLTIMO registro de HOY por usuario (DISTINCT ON)
+    //    - Si ese último es ENTRADA => el usuario está presente
+    const rows = await prisma.$queryRaw`
+      WITH ult AS (
+        SELECT DISTINCT ON (ra.id_usuario)
+          ra.id_usuario,
+          ra.id_sede,
+          ra.tipo,
+          ra.ts_servidor
+        FROM registro_asistencia ra
+        WHERE ra.ts_servidor >= date_trunc('day', now())
+          AND ra.ts_servidor <  date_trunc('day', now()) + interval '1 day'
+        ORDER BY ra.id_usuario, ra.ts_servidor DESC
+      )
+      SELECT
+        id_sede,
+        COUNT(*) FILTER (WHERE tipo = 'ENTRADA')::int AS presentes_hoy
+      FROM ult
+      GROUP BY id_sede;
+    `;
+
+    const map = new Map(rows.map((r) => [String(r.id_sede), Number(r.presentes_hoy)]));
+
+    // 3) Unir al JSON final sin romper nada de lo existente
+    const salida = sedes.map((s) => ({
+      ...s,
+      presentes_hoy: map.get(String(s.id_sede)) || 0,
+    }));
+
+    res.json(salida);
   } catch (err) {
     next(err);
   }
