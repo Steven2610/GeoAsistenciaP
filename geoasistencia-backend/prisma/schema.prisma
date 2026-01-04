@@ -10,25 +10,35 @@ datasource db {
 enum RolUsuario {
   admin
   empleado
+
+  @@map("rol_usuario")
 }
 
 enum EstadoUsuario {
   activo
   inactivo
+
+  @@map("estado_usuario")
 }
 
 enum TipoRegistro {
   ENTRADA
   SALIDA
+
+  @@map("tipo_registro")
 }
 
 enum FuenteRegistro {
   ONLINE
   OFFLINE_SYNC
+
+  @@map("fuente_registro")
 }
 
 enum TipoConsent {
   LOCATION
+
+  @@map("tipo_consent")
 }
 
 model sede {
@@ -48,18 +58,18 @@ model sede {
 }
 
 model usuario {
-  id_usuario       String       @id @default(uuid())
-  public_id        String       @unique @db.VarChar(30)
-  email            String       @unique @db.VarChar(160)
-  password_hash    String       @db.VarChar(255)
-  rol              RolUsuario   @default(empleado)
+  id_usuario       String        @id @default(uuid())
+  public_id        String        @unique @db.VarChar(30)
+  email            String        @unique @db.VarChar(160)
+  password_hash    String        @db.VarChar(255)
+  rol              RolUsuario    @default(empleado)
   estado           EstadoUsuario @default(activo)
   id_sede_asignada String?
 
-  created_at       DateTime     @default(now())
-  updated_at       DateTime     @updatedAt
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
 
-  sede             sede?        @relation(fields: [id_sede_asignada], references: [id_sede], onDelete: SetNull, onUpdate: Cascade)
+  sede             sede?         @relation(fields: [id_sede_asignada], references: [id_sede], onDelete: SetNull, onUpdate: Cascade)
   identidad        usuario_identidad?
   registros        registro_asistencia[]
   auditorias       audit_log[]
@@ -81,20 +91,20 @@ model usuario_identidad {
 }
 
 model registro_asistencia {
-  id_registro     String        @id @default(uuid())
-  id_usuario      String
-  id_sede         String
-  tipo            TipoRegistro
-  ts_servidor     DateTime
-  latitud      Decimal  @db.Decimal(10, 7)
-  longitud     Decimal  @db.Decimal(10, 7)
-  dentro_geocerca Boolean
-  fuente          FuenteRegistro @default(ONLINE)
-  device_id       String?       @db.VarChar(120)
-  created_at      DateTime      @default(now())
+  id_registro      String         @id @default(uuid())
+  id_usuario       String
+  id_sede          String
+  tipo             TipoRegistro
+  ts_servidor      DateTime
+  latitud          Decimal        @db.Decimal(10, 7)
+  longitud         Decimal        @db.Decimal(10, 7)
+  dentro_geocerca  Boolean
+  fuente           FuenteRegistro @default(ONLINE)
+  device_id        String?        @db.VarChar(120)
+  created_at       DateTime       @default(now())
 
-  usuario         usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Restrict, onUpdate: Cascade)
-  sede            sede    @relation(fields: [id_sede], references: [id_sede], onDelete: Restrict, onUpdate: Cascade)
+  usuario          usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Restrict, onUpdate: Cascade)
+  sede             sede    @relation(fields: [id_sede], references: [id_sede], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([id_usuario, ts_servidor])
   @@index([id_sede, ts_servidor])
