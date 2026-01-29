@@ -8,7 +8,7 @@ Arquitectura por capas:
 - `prisma/` (ORM + esquema)
 
 ## Requisitos
-- Node.js 18+ (recomendado 20+)
+- Node.js 18+ 
 - PostgreSQL instalado y corriendo
 
 ## Configuración rápida
